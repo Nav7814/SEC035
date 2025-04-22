@@ -1,0 +1,91 @@
+---app.py---
+
+from flask import Flask, jsonify, request, render_template
+import json
+
+app = Flask(__name__)
+
+VOTES_FILE = 'votes.json'
+
+def load_votes():
+    try:
+        with open(VOTES_FILE, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {"cats": 0, "dogs": 0}
+
+def save_votes(votes):
+    with open(VOTES_FILE, 'w') as f:
+        json.dump(votes, f)
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/vote', methods=['POST'])
+def vote():
+    data = request.json
+    choice = data.get('choice')
+    votes = load_votes()
+
+    if choice in votes:
+        votes[choice] += 1
+        save_votes(votes)
+        return jsonify(votes)
+    return jsonify({"error": "Invalid choice"}), 400
+
+@app.route('/results')
+def results():
+    votes = load_votes()
+    return jsonify(votes)
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+---index.html---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cat vs Dog Voting</title>
+  <script src="/static/script.js" defer></script>
+</head>
+<body>
+  <h1>Vote for Your Favorite!</h1>
+  <button onclick="submitVote('cats')">Vote for Cats 🐱</button>
+  <button onclick="submitVote('dogs')">Vote for Dogs 🐶</button>
+
+  <h2>Live Results:</h2>
+  <p>Cats: <span id="cats-count">0</span></p>
+  <p>Dogs: <span id="dogs-count">0</span></p>
+</body>
+</html>
+
+---votes.json---
+{"cats": 0, "dogs": 0}
+
+---script.js---
+function updateResults() {
+    fetch('/results')
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('cats-count').textContent = data.cats;
+        document.getElementById('dogs-count').textContent = data.dogs;
+      });
+  }
+  
+  function submitVote(choice) {
+    fetch('/vote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ choice })
+    })
+    .then(res => res.json())
+    .then(data => {
+      updateResults();
+    });
+  }
+  
+  setInterval(updateResults, 1000); // update every second
+  window.onload = updateResults;
+  
