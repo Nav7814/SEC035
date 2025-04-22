@@ -1,0 +1,58 @@
+---app.py---
+from flask import Flask, jsonify, render_template
+app = Flask(__name__)
+
+# Global counter
+counter = {"count": 0}
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/increment', methods=['POST'])
+def increment():
+    counter["count"] += 1
+    return jsonify(counter)
+
+@app.route('/get_count')
+def get_count():
+    return jsonify(counter)
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
+---index.html---
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Live Counter</title>
+</head>
+<body>
+    <h1>Live Counter</h1>
+    <p>Current count: <span id="count">0</span></p>
+    <button onclick="incrementCounter()">Click me!</button>
+
+    <script>
+        function fetchCount() {
+            fetch('/get_count')
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('count').textContent = data.count;
+                });
+        }
+
+        function incrementCounter() {
+            fetch('/increment', {
+                method: 'POST'
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('count').textContent = data.count;
+            });
+        }
+
+        // Load count on page load
+        window.onload = fetchCount;
+    </script>
+</body>
+</html>
